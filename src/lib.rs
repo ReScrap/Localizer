@@ -155,11 +155,7 @@ mod tests {
 
         {
             let string = "04204320430043B043A043I";
-            let actual = match decode_string(string) {
-                Ok(_) => false,
-                Err(_) => true,
-            };
-            assert!(actual);
+            assert!(decode_string(string).is_err());
         }
     }
 
