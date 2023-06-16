@@ -143,7 +143,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_scrap_lang"
+name = "rescrap_localizer"
 version = "0.1.0"
 dependencies = [
  "structopt",
