@@ -1,45 +1,45 @@
 use std::path::PathBuf;
-use structopt::{StructOpt, paw};
+use clap::Parser;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct CommandArgs {
     /// File to process
-    #[structopt(name = "file", parse(from_os_str))]
+    #[arg(name = "file")]
     file: PathBuf,
 
     /// If enabled, this program will outptut result to stdout instead of file
-    #[structopt(short, long)]
+    #[arg(short, long)]
     tostd: bool,
 }
 
-#[derive(StructOpt)]
-#[structopt(about = "Tool for decoding and encoding Scrapland localization files")]
+#[derive(Parser)]
+#[command(about = "Tool for decoding and encoding Scrapland localization files")]
 enum Command {
     /// Decode encoded file
     Decode {
-        #[structopt(flatten)]
+        #[command(flatten)]
         args: CommandArgs,
 
         // Note: outfile is extracted from CommandArgs because of help text
         /// Output file. If not specified, outptut will be in file "<input>_decoded.txt"
-        #[structopt(short, long)]
+        #[arg(short, long)]
         outfile: Option<PathBuf>,
 
     },
     /// Encode decoded file
     Encode {
-        #[structopt(flatten)]
+        #[command(flatten)]
         args: CommandArgs,
 
         // Note: outfile is extracted from CommandArgs because of help text
         /// Output file. If not specified, outptut will be in file "<input>_encdoded.txt"
-        #[structopt(short, long)]
+        #[arg(short, long)]
         outfile: Option<PathBuf>,
     },
 }
 
-#[paw::main]
-fn main(args: Command) {
+fn main() {
+    let args = Command::parse();
     match args {
         Command::Decode { args, outfile } => {
             let input_path_str = args.file.to_owned();
