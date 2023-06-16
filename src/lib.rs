@@ -12,13 +12,17 @@ pub struct Config {
     pub tostd: bool,
 }
 
-pub fn decode_string(string: &str) -> Option<String> {
+pub fn decode_string(string: &str) -> Result<String, Box<dyn Error>> {
     let mut res = String::new();
     let mut buf = String::new();
     let mut is_parsing_hex = false;
 
     for c in string.chars() {
         if c == char::from_u32(0x01).unwrap() {
+            if is_parsing_hex && buf.len() < 4 {
+                return Err(Box::from(format!("can not decode character '{}' in line '{}'", buf, string)));
+            }
+
             is_parsing_hex = true;
             continue;
         }
@@ -33,19 +37,19 @@ pub fn decode_string(string: &str) -> Option<String> {
         if buf.len() == 4 {
             is_parsing_hex = false;
 
-            let bytes = u16::from_str_radix(&buf, 16).unwrap();
+            let bytes = u16::from_str_radix(&buf, 16)?;
             let byte_arr = [bytes];
-            let decoded = String::from_utf16(&byte_arr).unwrap();
+            let decoded = String::from_utf16(&byte_arr)?;
 
             res.push_str(&decoded);
             buf = String::new();
         }
     }
 
-    return Some(res);
+    return Ok(res);
 }
 
-pub fn encode_string(string: &str) -> Option<String> {
+pub fn encode_string(string: &str) -> Result<String, Box<dyn Error>> {
     let mut res = String::new();
 
     for c in string.chars() {
@@ -62,7 +66,7 @@ pub fn encode_string(string: &str) -> Option<String> {
         res.push_str(&encoded);
     }
 
-    return Some(res);
+    return Ok(res);
 }
 
 pub fn decode_file(path: &PathBuf) -> Result<String, Box<dyn Error>> {
@@ -72,8 +76,8 @@ pub fn decode_file(path: &PathBuf) -> Result<String, Box<dyn Error>> {
     let reader = BufReader::new(file);
 
     for line in reader.lines() {
-        let string = &line.unwrap();
-        let decoded = decode_string(string).unwrap();
+        let string = &line?;
+        let decoded = decode_string(string)?;
         res.push_str(&decoded);
         res.push_str("\r\n");
     }
@@ -88,8 +92,8 @@ pub fn encode_file(path: &PathBuf) -> Result<String, Box<dyn Error>> {
     let reader = BufReader::new(file);
 
     for line in reader.lines() {
-        let string = &line.unwrap();
-        let encoded = encode_string(string).unwrap();
+        let string = &line?;
+        let encoded = encode_string(string)?;
         res.push_str(&encoded);
         res.push_str("\r\n");
     }
@@ -134,4 +138,45 @@ pub fn write_out_file(config: Config, res: &str, action_str: &str) -> Result<(),
 
     let _ = write!(outfile, "{}", res);
     return Ok(());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_string() {
+        {
+            let string = "042104320430043B043A0430";
+            let actual = decode_string(string).unwrap();
+            let expected = String::from("Свалка");
+            assert_eq!(actual, expected);
+        }
+
+        {
+            let string = "04204320430043B043A043I";
+            let actual = match decode_string(string) {
+                Ok(_) => false,
+                Err(_) => true,
+            };
+            assert!(actual);
+        }
+    }
+
+    #[test]
+    fn test_encode_string() {
+        {
+            let string = "Свалка";
+            let actual = encode_string(string).unwrap();
+            let expected = String::from("042104320430043B043A0430");
+            assert_eq!(actual, expected);
+        }
+
+        {
+            let string = "042104320430043B043A0430";
+            let actual = encode_string(string).unwrap();
+            let expected = String::from("042104320430043B043A0430");
+            assert_eq!(actual, expected);
+        }
+    }
 }
