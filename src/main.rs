@@ -30,7 +30,6 @@ struct Args {
     tostd: bool,
 }
 
-
 fn decode_string(string: &str) -> Option<String> {
     let mut res = String::new();
     let mut buf = String::new();
@@ -60,6 +59,27 @@ fn decode_string(string: &str) -> Option<String> {
             buf = String::new();
         }
     }
+
+    return Some(res);
+}
+
+fn encode_string(string: &str) -> Option<String> {
+    let mut res = String::new();
+
+    for c in string.chars() {
+        // NOTE: didn't found rust analog of pythons `char.isprintable()` and I am too lazy to
+        //       implement it myself. And do I need it anyways?
+        if c.is_ascii() {
+            res.push(c);
+            continue;
+        }
+
+        let mut buf = [0; 2];
+        let hex = c.encode_utf16(&mut buf);
+        let encoded = format!("\u{01}{:04X}", hex[0]);
+        res.push_str(&encoded);
+    }
+
     return Some(res);
 }
 
@@ -73,14 +93,28 @@ fn decode_file(path: &PathBuf) -> Result<String, std::io::Error> {
         let string = &line.unwrap();
         let decoded = decode_string(string).unwrap();
         res.push_str(&decoded);
+        res.push('\r');
         res.push('\n');
     }
 
     return Ok(res);
 }
 
-fn encode_file(_path: &PathBuf) -> Result<String, std::io::Error> {
-    unimplemented!();
+fn encode_file(path: &PathBuf) -> Result<String, std::io::Error> {
+    let mut res = String::new();
+
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+
+    for line in reader.lines() {
+        let string = &line.unwrap();
+        let encoded = encode_string(string).unwrap();
+        res.push_str(&encoded);
+        res.push('\r');
+        res.push('\n');
+    }
+
+    return Ok(res);
 }
 
 #[paw::main]
